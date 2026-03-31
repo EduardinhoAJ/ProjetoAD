@@ -1,25 +1,7 @@
-#Grupo 27
-#Guilherme Trincheiras 60271      Eduardo Jacinto 60734
-#Contem a classe Processador que contem as funcoes que chamam as equivalentes funções da Loja.py para processar o que o cliente deseja, tem os Handlers dados no template para o cliente conseguir chamar a função,
-#estão separadas as funções dadas no template e as novas criadas pelos alunos.
-#Tem a class processar_comando que recebe o comando, obtem o handler desejado e retorna OK ou NOK dependendo se foram triggered as Exceções especificadas
-
-
-
-
-
-
-
-
-
-import shlex
 from servidor.loja import Loja
-
 from servidor.excepcoes import (
     ExcepcaoComandoDesconhecido,
     ExcepcaoComandoNumeroArgumentosIncorreto,
-    ExcepcaoComandoNaoInterpretavel,
-    ExcepcaoComandoVazio,
     ExcepcaoSupermercado
 )
 
@@ -46,36 +28,18 @@ class Processador:
         }
 
     # ----------------------------
-    # PARSER
+    # MAIN ENTRY (RPC)
     # ----------------------------
-    def _dividir_comando(self, comando):
+    def processar_comando(self, pedido):
         try:
-            partes = shlex.split(comando)
-        except:
-            raise ExcepcaoComandoNaoInterpretavel(comando)
+            # pedido já vem como lista
+            if not isinstance(pedido, list) or len(pedido) == 0:
+                raise Exception("Pedido inválido")
 
-        if not partes:
-            raise ExcepcaoComandoVazio()
+            nome = pedido[0].upper()
+            args = pedido[1:]
 
-        return partes[0].upper(), partes[1:]
-
-    def _validar_args(self, args, n):
-        if len(args) != n:
-            raise ExcepcaoComandoNumeroArgumentosIncorreto(n, len(args))
-
-    def _get_handler(self, nome):
-        if nome not in self.HANDLERS:
-            raise ExcepcaoComandoDesconhecido(nome)
-        return self.HANDLERS[nome]
-
-    # ----------------------------
-    # MAIN ENTRY
-    # ----------------------------
-    def processar_comando(self, comando):
-        try:
-            nome, args = self._dividir_comando(comando)
             handler = self._get_handler(nome)
-
             resultado = handler(args)
 
             return ["OK", resultado]
@@ -87,15 +51,29 @@ class Processador:
             return ["NOK", "Erro interno"]
 
     # ----------------------------
-    # HANDLERS BÁSICOS
+    # AUXILIARES
+    # ----------------------------
+    def _validar_args(self, args, n):
+        if len(args) != n:
+            raise ExcepcaoComandoNumeroArgumentosIncorreto(n, len(args))
+
+    def _get_handler(self, nome):
+        if nome not in self.HANDLERS:
+            raise ExcepcaoComandoDesconhecido(nome)
+        return self.HANDLERS[nome]
+
+    # ----------------------------
+    # HANDLERS
     # ----------------------------
     def _cmd_exit(self, args):
         self._validar_args(args, 0)
-        return self.loja.reset()
+        self.loja.reset()
+        return "Servidor resetado"
 
     def _cmd_cria_categoria(self, args):
         self._validar_args(args, 1)
-        return self.loja.criar_categoria(args[0])
+        categoria = self.loja.criar_categoria(args[0])
+        return f"Categoria {categoria.nome} criada com sucesso."
 
     def _cmd_lista_categorias(self, args):
         self._validar_args(args, 0)
@@ -103,11 +81,15 @@ class Processador:
 
     def _cmd_remove_categoria(self, args):
         self._validar_args(args, 1)
-        return self.loja.remove_categoria(args[0])
+        nome = self.loja.remove_categoria(args[0])
+        return f"Categoria {nome} removida com sucesso."
 
     def _cmd_cria_produto(self, args):
         self._validar_args(args, 4)
-        return self.loja.cria_produto(args[0], args[1], args[2], args[3])
+        produto = self.loja.cria_produto(
+            args[0], args[1], float(args[2]), int(args[3])
+        )
+        return f"Produto {produto.nome_produto} criado com sucesso."
 
     def _cmd_lista_produtos(self, args):
         self._validar_args(args, 0)
@@ -123,7 +105,8 @@ class Processador:
 
     def _cmd_cria_cliente(self, args):
         self._validar_args(args, 3)
-        return self.loja.criar_cliente(args[0], args[1], args[2])
+        cliente = self.loja.criar_cliente(args[0], args[1], args[2])
+        return f"Cliente criado com id {cliente.id}"
 
     def _cmd_add_carrinho(self, args):
         self._validar_args(args, 3)
@@ -144,5 +127,3 @@ class Processador:
     def _cmd_lista_encomendas(self, args):
         self._validar_args(args, 1)
         return self.loja.lista_encomendas_cliente(int(args[0]))
-
-    
