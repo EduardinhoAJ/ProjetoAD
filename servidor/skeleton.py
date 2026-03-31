@@ -1,16 +1,4 @@
-from loja import Loja
-from excepcoes import (
-    ExcepcaoSupermercadoCategoriaJaExiste,
-    ExcepcaoSupermercadoCategoriaNaoExiste,
-    ExcepcaoSupermercadoProdutoJaExiste,
-    ExcepcaoSupermercadoProdutoNaoExiste,
-    ExcepcaoSupermercadoClienteJaExiste,
-    ExcepcaoSupermercadoClienteNaoExiste,
-    ExcepcaoSupermercadoCarrinhoVazio,
-    ExcepcaoSupermercadoQuantidadeInvalida,
-    ExcepcaoSupermercadoStockInsuficiente,
-)
-
+from servidor.loja import Loja
 
 CLIENTE_ANONIMO = 0
 CLIENTE_REGISTADO = 1
@@ -19,8 +7,10 @@ ADMINISTRADOR = 3
 
 
 class Skeleton:
+
     def __init__(self):
         self.loja = Loja()
+
         self.handlers = {
             10100: self._cria_categoria,
             10200: self._lista_categorias,
@@ -30,14 +20,19 @@ class Skeleton:
             10600: self._aumenta_stock_produto,
             10700: self._atualiza_preco_produto,
             10800: self._cria_cliente,
-            10900: self._adiciona_produto_carrinho,
-            11000: self._remove_produto_carrinho,
-            11100: self._lista_carrinho,
-            11200: self._checkout_carrinho,
-            11300: self._lista_encomendas,
+            10900: self._lista_clientes,
+            11000: self._adiciona_produto_carrinho,
+            11100: self._remove_produto_carrinho,
+            11200: self._lista_carrinho,
+            11300: self._checkout_carrinho,
+            11400: self._lista_encomendas,
         }
 
+    # =========================
+    # ENTRY
+    # =========================
     def processar(self, pedido):
+
         if not isinstance(pedido, list) or len(pedido) != 4:
             return [39902, ["MENSAGEM_MAL_FORMADA"]]
 
@@ -52,118 +47,128 @@ class Skeleton:
         try:
             return self.handlers[op_code](args, id_perfil, id_utilizador)
 
-        except ExcepcaoSupermercadoCategoriaJaExiste as e:
-            return [30110, [str(e)]]
-        except ExcepcaoSupermercadoCategoriaNaoExiste as e:
-            return [30310, [str(e)]]
-        except ExcepcaoSupermercadoProdutoJaExiste as e:
-            return [30410, [str(e)]]
-        except ExcepcaoSupermercadoProdutoNaoExiste as e:
-            return [30510, [str(e)]]
-        except ExcepcaoSupermercadoClienteJaExiste as e:
-            return [30810, [str(e)]]
-        except ExcepcaoSupermercadoClienteNaoExiste as e:
-            return [30910, [str(e)]]
-        except ExcepcaoSupermercadoCarrinhoVazio as e:
-            return [31210, [str(e)]]
-        except ExcepcaoSupermercadoQuantidadeInvalida as e:
-            return [39930, [str(e)]]
-        except ExcepcaoSupermercadoStockInsuficiente as e:
-            return [39931, [str(e)]]
         except Exception as e:
-            return [39999, [str(e)]]
+            # fallback (já tratado na loja também)
+            return [39928, [str(e)]]
 
+    # =========================
+    # AUTORIZAÇÃO
+    # =========================
     def _nao_autorizado(self):
         return [39920, ["OPERACAO_NAO_AUTORIZADA"]]
 
+    # =========================
+    # HELPERS SERIALIZAÇÃO
+    # =========================
+    def _serializar_lista(self, lista):
+        return [str(x) for x in lista]
+
+    # =========================
+    # CATEGORIAS
+    # =========================
     def _cria_categoria(self, args, id_perfil, id_utilizador):
         if id_perfil not in (FUNCIONARIO, ADMINISTRADOR):
             return self._nao_autorizado()
 
-        nome_categoria = args[0]
-        categoria = self.loja.criar_categoria(nome_categoria)
+        categoria = self.loja.criar_categoria(args[0])
         return [20100, [str(categoria)]]
 
     def _lista_categorias(self, args, id_perfil, id_utilizador):
-        categorias = self.loja.lista_categorias()
-        return [20200, [categorias]]
+        return [20200, [self._serializar_lista(self.loja.lista_categorias())]]
 
     def _remove_categoria(self, args, id_perfil, id_utilizador):
         if id_perfil not in (FUNCIONARIO, ADMINISTRADOR):
             return self._nao_autorizado()
 
-        nome_categoria = args[0]
-        resultado = self.loja.remove_categoria(nome_categoria)
+        resultado = self.loja.remove_categoria(args[0])
         return [20300, [resultado]]
 
+    # =========================
+    # PRODUTOS
+    # =========================
     def _cria_produto(self, args, id_perfil, id_utilizador):
         if id_perfil not in (FUNCIONARIO, ADMINISTRADOR):
             return self._nao_autorizado()
 
-        nome_produto, nome_categoria, preco, quantidade = args
-        produto = self.loja.cria_produto(nome_produto, nome_categoria, preco, quantidade)
+        nome, categoria, preco, quantidade = args
+        produto = self.loja.cria_produto(nome, categoria, float(preco), int(quantidade))
         return [20400, [str(produto)]]
 
     def _lista_produtos(self, args, id_perfil, id_utilizador):
-        produtos = self.loja.lista_produtos()
-        return [20500, [produtos]]
+        return [20500, [self._serializar_lista(self.loja.lista_produtos())]]
 
     def _aumenta_stock_produto(self, args, id_perfil, id_utilizador):
         if id_perfil not in (FUNCIONARIO, ADMINISTRADOR):
             return self._nao_autorizado()
 
-        nome_produto, quantidade = args
-        resultado = self.loja.aumenta_stock_produto(nome_produto, quantidade)
-        return [20600, [resultado]]
+        resultado = self.loja.aumenta_stock_produto(args[0], args[1])
+        return [20600, [str(resultado)]]
 
     def _atualiza_preco_produto(self, args, id_perfil, id_utilizador):
         if id_perfil not in (FUNCIONARIO, ADMINISTRADOR):
             return self._nao_autorizado()
 
-        nome_produto, novo_preco = args
-        resultado = self.loja.atualiza_preco_produto(nome_produto, novo_preco)
-        return [20700, [resultado]]
+        resultado = self.loja.atualiza_preco_produto(args[0], args[1])
+        return [20700, [str(resultado)]]
 
+    # =========================
+    # CLIENTES
+    # =========================
     def _cria_cliente(self, args, id_perfil, id_utilizador):
-        nome, email, password = args
-        cliente = self.loja.criar_cliente(nome, email, password)
+        cliente = self.loja.criar_cliente(args[0], args[1], args[2])
         return [20800, [str(cliente)]]
 
+    def _lista_clientes(self, args, id_perfil, id_utilizador):
+        if id_perfil not in (FUNCIONARIO, ADMINISTRADOR):
+            return self._nao_autorizado()
+
+        return [20900, [self._serializar_lista(self.loja.lista_clientes())]]
+
+    # =========================
+    # CARRINHO
+    # =========================
     def _adiciona_produto_carrinho(self, args, id_perfil, id_utilizador):
         if id_perfil != CLIENTE_REGISTADO:
             return self._nao_autorizado()
 
-        nome_produto, quantidade = args
-        resultado = self.loja.adiciona_produto_carrinho(id_utilizador, nome_produto, quantidade)
-        return [20900, [resultado]]
+        resultado = self.loja.adiciona_produto_carrinho(
+            id_utilizador, args[0], args[1]
+        )
+        return [21000, [str(resultado)]]
 
     def _remove_produto_carrinho(self, args, id_perfil, id_utilizador):
         if id_perfil != CLIENTE_REGISTADO:
             return self._nao_autorizado()
 
-        nome_produto = args[0]
-        resultado = self.loja.remove_produto_carrinho(id_utilizador, nome_produto)
-        return [21000, [resultado]]
+        resultado = self.loja.remove_produto_carrinho(id_utilizador, args[0])
+        return [21100, [resultado]]
 
     def _lista_carrinho(self, args, id_perfil, id_utilizador):
         if id_perfil != CLIENTE_REGISTADO:
             return self._nao_autorizado()
 
-        carrinho = self.loja.lista_carrinho(id_utilizador)
-        return [21100, [carrinho]]
+        return [21200, [self._serializar_lista(self.loja.lista_carrinho(id_utilizador))]]
 
     def _checkout_carrinho(self, args, id_perfil, id_utilizador):
         if id_perfil != CLIENTE_REGISTADO:
             return self._nao_autorizado()
 
         resultado = self.loja.carrinho_checkout(id_utilizador)
-        return [21200, [resultado]]
+        return [21300, [str(resultado)]]
 
+    # =========================
+    # ENCOMENDAS
+    # =========================
     def _lista_encomendas(self, args, id_perfil, id_utilizador):
         id_cliente = args[0]
 
         if id_perfil == CLIENTE_REGISTADO and id_cliente != id_utilizador:
             return self._nao_autorizado()
 
-        encomendas = self.loja.lista_encomendas_cliente(id_cliente)
-        return [21300, [encomendas]]
+        return [21400, [self._serializar_lista(
+            self.loja.lista_encomendas_cliente(id_cliente)
+        )]]
+
+    # =========================
+    def get_loja(self):
+        return self.loja
