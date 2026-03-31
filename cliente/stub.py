@@ -9,7 +9,9 @@ class Stub:
 
     def processa(self, pedido):
         send_message(self.rede.sock, pedido)
+
         resposta = receive_message(self.rede.sock)
+
         return resposta
 
     def close(self):

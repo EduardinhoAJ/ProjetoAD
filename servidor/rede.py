@@ -26,6 +26,11 @@ class TCPSocketServidor:
         self.sock.bind((ponto_acesso.endereco_ip, int(ponto_acesso.porto)))
         self.sock.listen()
 
+        
+    def receive_message(sock):
+        data = sock.recv(4096)
+        return pickle.loads(data)
+
 
     def get_socket(self):
         return self.sock
