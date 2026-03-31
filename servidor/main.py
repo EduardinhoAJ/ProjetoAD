@@ -6,9 +6,11 @@
 import sys
 import select
 import socket
-from servidor.processador import Processador
+
+from servidor.skeleton import Skeleton
 from servidor.rede import TCPSocketServidor
 from shared.socket_utilities import PontoAcesso
+
 
 def main():
 
@@ -16,7 +18,7 @@ def main():
         print("SERVIDOR> Uso: python -m servidor.main <porto>")
         sys.exit(1)
 
-    processador = Processador()
+    skeleton = Skeleton()
 
     ponto_acesso = PontoAcesso('localhost', int(sys.argv[1]))
     servidor = TCPSocketServidor(ponto_acesso)
@@ -24,22 +26,21 @@ def main():
     server_socket = servidor.get_socket()
 
     sockets = [server_socket, sys.stdin]
-
     clientes = {}
 
     while True:
+
         ready, _, _ = select.select(sockets, [], [])
 
         for s in ready:
 
-            #NOVO CLIENTE
+            # NOVO CLIENTE
             if s == server_socket:
                 client_socket, addr = server_socket.accept()
                 print("Novo cliente:", addr)
                 sockets.append(client_socket)
                 clientes[client_socket] = addr
 
-            #COMANDO DO SERVIDOR
             elif s == sys.stdin:
                 cmd = input()
                 if cmd in ["exit", "quit"]:
@@ -50,17 +51,21 @@ def main():
 
             else:
                 try:
-                    comando = servidor.receive_command(s)
+                    pedido = servidor.receive_command(s)
 
-                    if comando is None:
+                    if pedido is None:
                         sockets.remove(s)
                         s.close()
                         continue
 
-                    resposta = processador.processar_comando(comando)
+                    resposta = skeleton.processar(pedido)
                     servidor.send_response(s, resposta)
 
                 except Exception as e:
                     print("Erro:", e)
                     sockets.remove(s)
                     s.close()
+
+
+if __name__ == "__main__":
+    main()

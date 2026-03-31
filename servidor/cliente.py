@@ -2,13 +2,15 @@
 #Guilherme Trincheiras 60271      Eduardo Jacinto 60734
 #Cria o objeto cliente
 
+
+
 class Cliente:
 
     _contador_global = 1
 
     def __init__(self, nome_cliente, email, password):
 
-        self.id_cliente = Cliente._contador_global
+        self.id = Cliente._contador_global
         self.nome = nome_cliente
         self.email = email
         self.password = password
@@ -16,7 +18,7 @@ class Cliente:
         Cliente._contador_global += 1
 
     def obter_id(self):
-        return self.id_cliente
+        return self.id
 
     def __str__(self):
-        return f"{self.id_cliente} - {self.nome} ({self.email})"
+        return f"{self.id} - {self.nome} ({self.email})"
